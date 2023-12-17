@@ -1,9 +1,42 @@
 import datasets
-import tokenizers
+import tokenizers as tkz
 import torch
+from pathlib import Path
+
+### tokenizers guide ###
+# https://huggingface.co/docs/transformers/tokenizer_summary
+# https://huggingface.co/docs/tokenizers/quicktour
+# https://huggingface.co/learn/nlp-course/chapter6/2?fw=pt
+
+
+def get_all_sentences(ds,lang):
+    for item in ds:
+        yield item['translation'][lang]
+
+
+def get_or_build_tokenizer(config,ds,lang):
+    tokenizer_path = Path(config['tokenizer_file'].format(lang)) #if tokenizer path exists
+    if not Path.exists(tokenizer_path): #otherwise build
+        tokenizer = tkz.Tokenizer(tkz.modelWordLevel(unk_token="[UNK]"))
+        tokenizer.pre_tokenizer = tkz.pre_tokenizers.Whitespace()
+        trainer = tkz.trainers.WordLevelTrainer(special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
+        tokenizer.train_from_iterator(get_all_sentences(ds, lang), trainer=trainer)
+        tokenizer.save(str(tokenizer_path))
+    else:
+        tokenizer = tkz.Tokenizer.from_file(str(tokenizer_path))
+    return tokenizer
+
 
 
 """
+
+from datasets import load_dataset
+from tokenizers import Tokenizer
+from tokenizers.model import WordLevel
+from tokenizers.trainers import WordLevelTrainer
+from tokenizers.pre_tokenizers import Whitespace
+
+
 def get_or_build_tokenizer(config, ds, lang):
     tokenizer_path = Path(config['tokenizer_file'].format(lang))
     if not Path.exists(tokenizer_path):
@@ -21,7 +54,7 @@ def get_or_build_tokenizer(config, ds, lang):
 
 def get_ds(config):
     # It only has the train split, so we divide it overselves
-    ds_raw = load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
+    ds_raw = load_dataset('opus_books',f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
 
     # Build tokenizers
     tokenizer_src = get_or_build_tokenizer(config, ds_raw, config['lang_src'])
