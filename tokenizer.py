@@ -17,8 +17,11 @@ def get_all_sentences(ds,lang):
 def get_or_build_tokenizer(config,ds,lang):
     tokenizer_path = Path(config['tokenizer_file'].format(lang)) #if tokenizer path exists
     if not Path.exists(tokenizer_path): #otherwise build
-        tokenizer = tkz.Tokenizer(tkz.modelWordLevel(unk_token="[UNK]"))
-        tokenizer.pre_tokenizer = tkz.pre_tokenizers.Whitespace()
+        tokenizer = tkz.Tokenizer(tkz.models.WordLevel(unk_token="[UNK]"))
+        # instantiate Tokenizer class with desired model
+        tokenizer.pre_tokenizer = tkz.pre_tokenizers.Whitespace() 
+        # split input into words according to whitespace
+        # so that a token do not correspond to more than one word
         trainer = tkz.trainers.WordLevelTrainer(special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
         tokenizer.train_from_iterator(get_all_sentences(ds, lang), trainer=trainer)
         tokenizer.save(str(tokenizer_path))
