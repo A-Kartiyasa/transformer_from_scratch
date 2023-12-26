@@ -129,7 +129,7 @@ class FeedForwardBlock(nn.Module):
 #class residual_connection(nn.Module):
 # decided not to make a separate class for this, add directly in encoder
 
-class OutputLayer(nn.Module):
+class OutputLayer(nn.Module): #returns a probability of each word in the vocabulary
 
     def __init__(self,d_model:int, vocab_size:int):
         super().__init__()
