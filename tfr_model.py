@@ -176,7 +176,7 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int, dropout_rate: float = None):
         super().__init__()
         self.d_model = d_model
-        self.n_heads = n_heads
+        self.h = n_heads
         assert d_model % n_heads == 0, "embedding dimension d_model is not divisible by number of heads n_heads"
         self.d_k = int(d_model/n_heads)
 
@@ -209,17 +209,18 @@ class MultiHeadAttention(nn.Module):
         # note: explanation of torch.Tensor.view:
         # https://pytorch.org/docs/stable/generated/torch.Tensor.view.html
 
-        attention_output, query_key = self.attention(query, key, value, mask)
+        attention_output, self.query_key = self.attention(query, key, value, mask)
 
         # Concatenate the heads
         # (batch, h, seq_len, d_k) --> (batch, seq_len, h, d_k) --> (batch, seq_len, d_model)
-        x = attention_output.transpose(1, 2).contiguous().view(x.shape[0], -1, self.h * self.d_k)
+        x = attention_output.transpose(1, 2)
+        x = x.contiguous().view(x.shape[0], -1, self.h * self.d_k) #separate this to avoid UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
         #note: explanation of torch.Tensor.contiguous:
         #https://stackoverflow.com/questions/48915810/what-does-contiguous-do-in-pytorch 
         #apparently torch.Tensor.view needs a contiguous input.
 
         x = self.wo(x) #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
-        return x, query_key
+        return x
 
 
 ##### ENCODER AND DECODER BLOCKS #####
@@ -360,7 +361,7 @@ class Transformer(nn.Module):
     
     def project(self, x):
         # (batch, seq_len, vocab_size)
-        return self.projection_layer(x)
+        return self.output_layer(x)
     
 
 def build_transformer(src_vocab_size: int, tgt_vocab_size: int, 

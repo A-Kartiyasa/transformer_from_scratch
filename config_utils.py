@@ -2,21 +2,21 @@ from pathlib import Path
 
 def get_config():
     return {
-        "batch_size": 8,
-        "n_epochs": 20,
+        "batch_size": 32,
+        "n_epochs": 10,
         "lr": 1e-4,
-        "seq_len": 350,
-        "d_model": 512,
+        "seq_len": 500,
+        "d_model": 128, #512 in the paper
         "n_blocks": 6,
         "n_heads": 8,
         "d_ff": 2048,
         "dropout_rate": 0.01,
         "datasource": 'opus_books',
         "lang_src": "en",
-        "lang_tgt": "it",
+        "lang_tgt": "fr",
         "model_folder": "weights",
         "model_basename": "tfr_model_",
-        "preload": "latest",
+        "preload": None, #change this to latest epoch number as string if training crashed
         "tokenizer_file": "tokenizer_{0}.json",
         "experiment_name": "runs/tmodel"
     }
