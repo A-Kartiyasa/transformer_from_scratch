@@ -2,18 +2,18 @@ from pathlib import Path
 
 def get_config():
     return {
-        "batch_size": 32,
-        "n_epochs": 10,
+        "batch_size": 8,
+        "n_epochs": 5,
         "lr": 1e-4,
-        "seq_len": 500,
+        "seq_len": 350,
         "d_model": 128, #512 in the paper
-        "n_blocks": 6,
-        "n_heads": 8,
-        "d_ff": 2048,
+        "n_blocks": 2, #6 in the paper
+        "n_heads": 4, #8 in the paper
+        "d_ff": 512, #2048 in the paper
         "dropout_rate": 0.01,
         "datasource": 'opus_books',
         "lang_src": "en",
-        "lang_tgt": "fr",
+        "lang_tgt": "it",
         "model_folder": "weights",
         "model_basename": "tfr_model_",
         "preload": None, #change this to latest epoch number as string if training crashed
