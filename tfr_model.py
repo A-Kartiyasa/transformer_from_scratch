@@ -69,7 +69,7 @@ class PositionalEncoding(nn.Module):
         pos_enc[:,0::2] = torch.sin(position*div_term) #for the even positions (0,2,4,6,...)
         pos_enc[:,1::2] = torch.cos(position*div_term) #for the even positions (0,1,3,5,...)
 
-        pos_enc = pos_enc.unsqeeze(0) #gives shape (1,seq_len, d_model)
+        pos_enc = pos_enc.unsqueeze(0) #gives shape (1,seq_len, d_model)
 
         self.register_buffer('pos_enc', pos_enc) #save this during training, but keep fixed
 
@@ -106,7 +106,7 @@ class LayerNormalization(nn.Module):
 
 class FeedForwardBlock(nn.Module):
 
-    def __init__(self,d_model:int, dropout_rate: float, d_ff:int = 2048):
+    def __init__(self, d_model:int, dropout_rate: float, d_ff:int = 2048):
         """
         Feed-forward block made of 2 linear layers
 
@@ -335,6 +335,8 @@ class Transformer(nn.Module):
                  src_embed = InputEmbeddings, tgt_embed = InputEmbeddings,
                  src_pos = PositionalEncoding, tgt_pos = PositionalEncoding,
                  output_layer = OutputLayer):
+        
+        super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.src_embed = src_embed
@@ -378,7 +380,7 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
     encoder_blocks = []
     for _ in range(n_blocks):
         encoder_self_attention_block = MultiHeadAttention(d_model, n_heads, dropout_rate)
-        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout_rate)
+        feed_forward_block = FeedForwardBlock(d_model, dropout_rate, d_ff)
         encoder_block = EncoderBlock(d_model, encoder_self_attention_block, 
                                      feed_forward_block, dropout_rate)
         encoder_blocks.append(encoder_block)
@@ -388,7 +390,7 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
     for _ in range(n_blocks):
         decoder_self_attention_block = MultiHeadAttention(d_model, n_heads, dropout_rate)
         decoder_cross_attention_block = MultiHeadAttention(d_model, n_heads, dropout_rate)
-        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout_rate)
+        feed_forward_block = FeedForwardBlock(d_model, dropout_rate, d_ff)
         decoder_block = DecoderBlock(d_model, decoder_self_attention_block, 
                                      decoder_cross_attention_block, feed_forward_block, 
                                      dropout_rate)
