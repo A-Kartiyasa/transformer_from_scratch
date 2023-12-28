@@ -1,3 +1,8 @@
+"""
+stty is not recognized error?
+
+"""
+
 import os
 from pathlib import Path
 from tqdm import tqdm #for progress bar
