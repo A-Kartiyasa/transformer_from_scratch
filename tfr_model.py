@@ -31,7 +31,7 @@ class InputEmbeddings(nn.Module):
     
     def forward(self, x):
         #(batch, seq_len) --> (batch, seq_len, d_model)
-        x = self.embedding(x)*np.sqrt(self.d_model)
+        x = self.embedding(x)*np.sqrt(self.d_model) #see section 3.4 in the paper
         return x
     
 
@@ -54,7 +54,7 @@ class PositionalEncoding(nn.Module):
         self.seq_len = seq_len
         self.dropout = None
         if dropout_rate is not None:
-            self.dropout = nn.Dropout(dropout_rate) #why tho
+            self.dropout = nn.Dropout(dropout_rate) #see section 5.4 of paper
 
         #prepare tensor of shape (seq_len, d_model)
         pos_enc = torch.zeros(size=(seq_len,d_model))

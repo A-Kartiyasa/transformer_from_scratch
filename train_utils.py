@@ -157,7 +157,7 @@ def train_model(config):
     initial_epoch = 0 #0 if we start from beginning
     global_step = 0
 
-    if config['preload']: #so we can resume training if the training crashes (?) - need model state and optimizer state
+    if config['preload']: #so we can resume training - need model state and optimizer state
         model_filename = config_utils.get_weights_file_path(config, epoch= config['preload'])
         print(f'preloading model {model_filename}')
         model_state = torch.load(model_filename)
@@ -223,6 +223,8 @@ def train_model(config):
         #     'optimizer_state_dict': optimizer.state_dict(),
         #     'global_step': global_step}, 
         #     model_filename)
+    
+    #save model at the end of training   
     model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
     torch.save({
             'epoch': epoch,
@@ -293,7 +295,7 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
     with torch.no_grad(): # do not calculate gradient for validation
         for batch in validation_ds:
             count += 1
-            encoder_input = batch["encoder_input"].to(device) # (b, seq_len) #why does this give CUDA invalid ordinal error?
+            encoder_input = batch["encoder_input"].to(device) # (b, seq_len) 
             encoder_mask = batch["encoder_mask"].to(device) # (b, 1, 1, seq_len)
 
             # check that the batch size is 1
@@ -321,22 +323,21 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
                 break
     
     if writer:
-        # is apparently deprecated?
         # Evaluate the character error rate
         # Compute the char error rate 
-        metric = torchmetrics.CharErrorRate()
+        metric = torchmetrics.text.CharErrorRate()
         cer = metric(predicted, expected)
         writer.add_scalar('validation cer', cer, global_step)
         writer.flush()
 
         # Compute the word error rate
-        metric = torchmetrics.WordErrorRate()
+        metric = torchmetrics.text.WordErrorRate()
         wer = metric(predicted, expected)
         writer.add_scalar('validation wer', wer, global_step)
         writer.flush()
 
         # Compute the BLEU metric
-        metric = torchmetrics.BLEUScore()
+        metric = torchmetrics.text.BLEUScore()
         bleu = metric(predicted, expected)
         writer.add_scalar('validation BLEU', bleu, global_step)
         writer.flush()

@@ -3,7 +3,7 @@ from pathlib import Path
 def get_config():
     return {
         "batch_size": 8,
-        "n_epochs": 30,
+        "n_epochs": 60, #must be beigger than preload if using preload
         "lr": 1e-4,
         "seq_len": 250,
         "d_model": 256, #512 in the paper
@@ -18,7 +18,7 @@ def get_config():
         "lang_tgt": "fr",
         "model_folder": "weights",
         "model_basename": "tfr_model_",
-        "preload": None, #change this to latest epoch number as string if training crashed
+        "preload": 29, #change this to latest epoch number if you want to continue from previous training session
         "tokenizer_file": "tokenizer_{0}.json",
         "experiment_name": "runs/tmodel"
     }
