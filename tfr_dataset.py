@@ -27,8 +27,12 @@ class BilingualDataset(Dataset):
         src_target_pair = self.ds[idx]
 
         #extract the source text and target text
+        #src_text = src_target_pair['text_1'] #eng, using indonlp data
+        #tgt_text = src_target_pair['text_2'] #id
+        
         src_text = src_target_pair['translation'][self.src_lang]
         tgt_text = src_target_pair['translation'][self.tgt_lang]
+
 
         # Transform the text into tokens (ie turn input sentence into sequence of numerical token indices)
         enc_input_tokens = self.tokenizer_src.encode(src_text).ids

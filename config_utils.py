@@ -3,17 +3,19 @@ from pathlib import Path
 def get_config():
     return {
         "batch_size": 8,
-        "n_epochs": 5,
+        "n_epochs": 30,
         "lr": 1e-4,
-        "seq_len": 350,
-        "d_model": 128, #512 in the paper
-        "n_blocks": 2, #6 in the paper
-        "n_heads": 4, #8 in the paper
-        "d_ff": 512, #2048 in the paper
-        "dropout_rate": 0.01,
-        "datasource": 'opus_books',
+        "seq_len": 250,
+        "d_model": 256, #512 in the paper
+        "n_blocks": 6, #6 in the paper
+        "n_heads": 8, #8 in the paper
+        "d_ff": 1024, #2048 in the paper
+        "dropout_rate": 0.0,
+        #"datasource": 'indonlp/NusaX-MT', #dataset is too small 
+        #"datasource": 'opus_books',
+        "datasource": 'opus_euconst',
         "lang_src": "en",
-        "lang_tgt": "it",
+        "lang_tgt": "fr",
         "model_folder": "weights",
         "model_basename": "tfr_model_",
         "preload": None, #change this to latest epoch number as string if training crashed

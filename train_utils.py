@@ -23,6 +23,7 @@ import tfr_dataset
 import tfr_model
 import config_utils
 
+CUDA_LAUNCH_BLOCKING = 1 #what is this for
 
 ### tokenizers guide ###
 # https://huggingface.co/docs/transformers/tokenizer_summary
@@ -34,13 +35,29 @@ import config_utils
 
 # note: "training" a tokenizer is a deterministic process, not stochastic like training NN.
 
+# def get_all_sentences_opus_books(ds,lang):
+#     for item in ds:
+#         yield item['translation'][lang] 
+#         #returns a generator
+
+# def get_all_sentences_indonlp(ds, lang): #indonlp/NusaX-MT
+#     lang_idx = None
+#     if lang == 'eng':
+#         lang_idx = 1
+#     elif lang == 'ind':
+#         lang_idx = 2
+
+#     for item in ds:
+#         yield item[f'text_{lang_idx}'] #1 for english, 2 for indonesian
+
 def get_all_sentences(ds,lang):
     for item in ds:
-        yield item['translation'][lang]
+        yield item['translation'][lang] 
+        #returns a generator
 
 
 def get_or_build_tokenizer(config,ds,lang):
-    tokenizer_path = Path(config['tokenizer_file'].format(lang)) #if tokenizer path exists
+    tokenizer_path = Path(config['tokenizer_file'].format(lang)) #path to the tokenizer
     if not Path.exists(tokenizer_path): #otherwise build
         tokenizer = tkz.Tokenizer(tkz.models.WordLevel(unk_token="[UNK]"))
         # instantiate Tokenizer class with desired model
@@ -61,13 +78,16 @@ def get_or_build_tokenizer(config,ds,lang):
 
 def get_ds(config):
     # It only has the train split, so we divide it overselves
+    #ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train+validation+test')
+    #train_ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
+    #val_ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='validation')
     ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
-
+    
     # Build tokenizers
     tokenizer_src = get_or_build_tokenizer(config, ds_raw, config['lang_src']) #build tokenizer for source language dataset
     tokenizer_tgt = get_or_build_tokenizer(config, ds_raw, config['lang_tgt']) #build tokenizer for target language dataset
 
-    # Keep 90% for training, 10% for validation
+    # in case the dataset has not been pre-split
     train_ds_size = int(0.9 * len(ds_raw))
     val_ds_size = len(ds_raw) - train_ds_size
     train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size]) #torch.utils.data.random_split
@@ -83,8 +103,10 @@ def get_ds(config):
     max_len_tgt = 0
 
     for item in ds_raw:
-        src_ids = tokenizer_src.encode(item['translation'][config['lang_src']]).ids
+        src_ids = tokenizer_src.encode(item['translation'][config['lang_src']]).ids #for opus_books
         tgt_ids = tokenizer_tgt.encode(item['translation'][config['lang_tgt']]).ids
+        #src_ids = tokenizer_src.encode(item['text_1']).ids #using indonlp dataset
+        #tgt_ids = tokenizer_src.encode(item['text_2']).ids
         max_len_src = max(max_len_src, len(src_ids))
         max_len_tgt = max(max_len_tgt, len(tgt_ids))
 
@@ -110,15 +132,14 @@ def get_model(config, vocab_src_len, vocab_tgt_len):
     return model
 
 
-
-##### TRAINING FUNCTION #####
+##### TRAIN FUNCTIONS #####
 
 def train_model(config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'device is {device}')
+    print(f'training device is {device}')
 
     #ensure we have the folder to save the weights
-    Path(config['model_folder']).mkdir(parents=True, exist_ok=True)
+    Path(f"{config['datasource']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
 
     # DataLoader and model
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
@@ -129,7 +150,8 @@ def train_model(config):
 
     # optimizer, loss function
     optimizer = torch.optim.Adam(model.parameters(), lr= config['lr'], eps=1e-9)
-    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device) #use label smoothing to reduce overfitting
+    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device) 
+    #use label smoothing to reduce overfitting
 
     # preloading settings
     initial_epoch = 0 #0 if we start from beginning
@@ -188,24 +210,29 @@ def train_model(config):
 
         ### validation after every epoch
         # run_validation function is provided below
-        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, 
+        run_validation(model, val_dataloader, tokenizer_tgt, 
                        config['seq_len'], device, lambda msg: batch_iterator.write(msg), 
                        global_step, writer)
 
 
         ### Save the model at the end of every epoch
-        model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
-        torch.save({
+        # model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
+        # torch.save({
+        #     'epoch': epoch,
+        #     'model_state_dict': model.state_dict(),
+        #     'optimizer_state_dict': optimizer.state_dict(),
+        #     'global_step': global_step}, 
+        #     model_filename)
+    model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
+    torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step}, 
             model_filename)
 
-
-
-
 ##### VALIDATION FUNCTIONS #####
+
             
 def greedy_decode(model, source, source_mask,tokenizer_tgt, max_len, device): #tokenizer_src is not used?
     sos_idx = tokenizer_tgt.token_to_id('[SOS]')
@@ -230,7 +257,7 @@ def greedy_decode(model, source, source_mask,tokenizer_tgt, max_len, device): #t
         out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
 
         # get next token and add it to the decoder input (ie for the next run the decoder input has an additional word)
-        prob = model.project(out[:, -1]) #whz the index?
+        prob = model.project(out[:, -1]) #why the index?
         _, next_word = torch.max(prob, dim=1) #take the maximum probability, ie "greedy"
 
         decoder_input = torch.cat(
@@ -245,7 +272,8 @@ def greedy_decode(model, source, source_mask,tokenizer_tgt, max_len, device): #t
 
 
 def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_msg, global_step, writer, num_examples=2):
-    model.eval()
+    print(f'validation device is {device}')
+    model.eval() #set model to eval mode
     count = 0
 
     source_texts = []
@@ -262,15 +290,14 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
         # If we can't get the console width, use 80 as default
         console_width = 80
 
-    with torch.no_grad():
+    with torch.no_grad(): # do not calculate gradient for validation
         for batch in validation_ds:
             count += 1
-            encoder_input = batch["encoder_input"].to(device) # (b, seq_len)
+            encoder_input = batch["encoder_input"].to(device) # (b, seq_len) #why does this give CUDA invalid ordinal error?
             encoder_mask = batch["encoder_mask"].to(device) # (b, 1, 1, seq_len)
 
             # check that the batch size is 1
-            assert encoder_input.size(
-                0) == 1, "Batch size must be 1 for validation"
+            assert encoder_input.size(0) == 1, "Batch size must be 1 for validation"
 
             model_out = greedy_decode(model, encoder_input, encoder_mask, tokenizer_tgt, max_len, device)
 
@@ -294,6 +321,7 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
                 break
     
     if writer:
+        # is apparently deprecated?
         # Evaluate the character error rate
         # Compute the char error rate 
         metric = torchmetrics.CharErrorRate()
@@ -316,9 +344,14 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
 
 
 
+
 ##### actually running the training #####
 
+
 if __name__ == '__main__':
+    # config = config_utils.get_config()
+    # ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
+    # get_all_sentences(ds_raw,1)
     config = config_utils.get_config()
     #print(config)
     print('starting training script')
