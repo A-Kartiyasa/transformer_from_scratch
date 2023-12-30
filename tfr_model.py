@@ -348,16 +348,16 @@ class Transformer(nn.Module):
     
     def encode(self, src, src_mask):
         # (batch, seq_len, d_model)
-        src = self.src_embed(src)
-        src = self.src_pos(src)
-        return self.encoder(src, src_mask)
+        src = self.src_embed(src) #input embedding
+        src = self.src_pos(src) #positional encoding
+        return self.encoder(src, src_mask) #encoder block
     
     def decode(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, 
                tgt: torch.Tensor, tgt_mask: torch.Tensor):
         # (batch, seq_len, d_model)
-        tgt = self.tgt_embed(tgt)
-        tgt = self.tgt_pos(tgt)
-        return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
+        tgt = self.tgt_embed(tgt) #output embedding
+        tgt = self.tgt_pos(tgt) #positional encoding
+        return self.decoder(tgt, encoder_output, src_mask, tgt_mask) #decoder block
     
     def project(self, x):
         # (batch, seq_len, vocab_size)
