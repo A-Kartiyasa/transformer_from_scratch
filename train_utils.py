@@ -215,14 +215,17 @@ def train_model(config):
                        global_step, writer)
 
 
-        ### Save the model at the end of every epoch
-        # model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
-        # torch.save({
-        #     'epoch': epoch,
-        #     'model_state_dict': model.state_dict(),
-        #     'optimizer_state_dict': optimizer.state_dict(),
-        #     'global_step': global_step}, 
-        #     model_filename)
+        ### Save the model at the end of every 5 epoch
+        
+        if (epoch+1)%5 == 0:
+            model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'global_step': global_step}, 
+                model_filename)
+    
     
     #save model at the end of training   
     model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")

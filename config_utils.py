@@ -10,7 +10,7 @@ def get_config():
         "n_blocks": 6, #6 in the paper
         "n_heads": 8, #8 in the paper
         "d_ff": 1024, #2048 in the paper
-        "dropout_rate": 0.0,
+        "dropout_rate": 0.05,
         #"datasource": 'indonlp/NusaX-MT', #dataset is too small 
         #"datasource": 'opus_books',
         "datasource": 'opus_euconst',
@@ -18,7 +18,7 @@ def get_config():
         "lang_tgt": "fr",
         "model_folder": "weights",
         "model_basename": "tfr_model_",
-        "preload": 29, #change this to latest epoch number if you want to continue from previous training session
+        "preload": None, #change this to latest epoch number if you want to continue from previous training session
         "tokenizer_file": "tokenizer_{0}.json",
         "experiment_name": "runs/tmodel"
     }
