@@ -3,14 +3,14 @@ from pathlib import Path
 def get_config():
     return {
         "batch_size": 8,
-        "n_epochs": 60, #must be beigger than preload if using preload
+        "n_epochs": 50, #must be bigger than preload if using preload
         "lr": 1e-4,
         "seq_len": 250,
         "d_model": 256, #512 in the paper
         "n_blocks": 6, #6 in the paper
         "n_heads": 8, #8 in the paper
         "d_ff": 1024, #2048 in the paper
-        "dropout_rate": 0.05,
+        "dropout_rate": 0.0,
         #"datasource": 'indonlp/NusaX-MT', #dataset is too small 
         #"datasource": 'opus_books',
         "datasource": 'opus_euconst',

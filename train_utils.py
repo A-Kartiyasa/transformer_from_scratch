@@ -277,7 +277,7 @@ def greedy_decode(model, source, source_mask,tokenizer_tgt, max_len, device): #t
 
 
 def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_msg, global_step, writer, num_examples=2):
-    print(f'validation device is {device}')
+    #print(f'validation device is {device}')
     model.eval() #set model to eval mode
     count = 0
 
