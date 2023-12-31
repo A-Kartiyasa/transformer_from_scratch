@@ -77,8 +77,7 @@ class PositionalEncoding(nn.Module):
     def forward(self,x):
         # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
         x = x + (self.pos_enc[:,:x.shape[1],:]).requires_grad_(False) #ensure not updated during training
-        if self.dropout is not None:
-            x = self.dropout(x)
+        x = self.dropout(x)
         return x
 
 
@@ -160,9 +159,7 @@ class SingleAttention(nn.Module):
             query_key.masked_fill_(mask == 0, value = -1e9)
             #if the mask value is 0, fill with "negative infinity", so that the softmax is zero
         
-        if self.dropout is not None:
-            query_key = self.dropout(query_key)
-        
+        query_key = self.dropout(query_key)
         query_key = nn.Softmax(dim=-1)(query_key) #so that the ROWS add up to 1
         #the video seem to be missing this softmax?
         attention_output = torch.matmul(query_key, value)
@@ -173,7 +170,7 @@ class SingleAttention(nn.Module):
 
 class MultiHeadAttention(nn.Module):
 
-    def __init__(self, d_model: int, n_heads: int, dropout_rate: float = None):
+    def __init__(self, d_model: int, n_heads: int, dropout_rate: float):
         super().__init__()
         self.d_model = d_model
         self.h = n_heads
@@ -230,7 +227,7 @@ class EncoderBlock(nn.Module):
     def __init__(self, features:int,
                  self_attention_block: MultiHeadAttention, 
                  feed_forward_block: FeedForwardBlock,
-                 dropout_rate: float = None):
+                 dropout_rate: float):
         #self-attention & feedforward as argumentshere in case want to add other custom layers
 
         super().__init__()
@@ -246,12 +243,10 @@ class EncoderBlock(nn.Module):
         # x should be input embedding + positional encoding
         #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
         attention_output = self.self_attention_block(x,x,x,src_mask)
-        if self.dropout is not None:
-            attention_output = self.dropout(attention_output)
+        attention_output = self.dropout(attention_output)
         x = self.norm(x+attention_output) #with residual connection
         feed_forward_ouput = self.feed_forward_block(x)
-        if self.dropout is not None:
-            feed_forward_ouput = self.dropout(feed_forward_ouput)
+        feed_forward_ouput = self.dropout(feed_forward_ouput)
         x = self.norm(x+feed_forward_ouput)
         
         return x
@@ -263,7 +258,7 @@ class DecoderBlock(nn.Module):
                  self_attention_block: MultiHeadAttention,
                  cross_attention_block: MultiHeadAttention,
                  feed_forward_block: FeedForwardBlock,
-                 dropout_rate: float = None):
+                 dropout_rate: float):
 
         super().__init__()
         self.self_attention_block = self_attention_block
@@ -279,20 +274,17 @@ class DecoderBlock(nn.Module):
         #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
         ### self attention
         self_attention_output = self.self_attention_block(x,x,x,tgt_mask)
-        if self.dropout is not None:
-            self_attention_output = self.dropout(self_attention_output)
+        self_attention_output = self.dropout(self_attention_output)
         x = self.norm(x+self_attention_output) #with residual connection
 
         ### cross attention
         # query is output of previous decoder layer, key & value is final output of encoder
         cross_attention_output = self.cross_attention_block(x,encoder_output, encoder_output, src_mask)
-        if self.dropout is not None:
-            cross_attention_output = self.dropout(cross_attention_output)
+        cross_attention_output = self.dropout(cross_attention_output)
         x = self.norm(x+cross_attention_output)
 
         feed_forward_ouput = self.feed_forward_block(x)
-        if self.dropout is not None:
-            feed_forward_ouput = self.dropout(feed_forward_ouput)
+        feed_forward_ouput = self.dropout(feed_forward_ouput)
         x = self.norm(x+feed_forward_ouput)
         
         return x
