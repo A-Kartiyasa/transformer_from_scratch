@@ -54,7 +54,7 @@ class PositionalEncoding(nn.Module):
         self.seq_len = seq_len
         self.dropout = None
         if dropout_rate is not None:
-            self.dropout = nn.Dropout(dropout_rate) #see section 5.4 of paper
+            self.dropout = nn.Dropout(dropout_rate) 
 
         #prepare tensor of shape (seq_len, d_model)
         pos_enc = torch.zeros(size=(seq_len,d_model))
@@ -77,7 +77,7 @@ class PositionalEncoding(nn.Module):
     def forward(self,x):
         # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
         x = x + (self.pos_enc[:,:x.shape[1],:]).requires_grad_(False) #ensure not updated during training
-        x = self.dropout(x)
+        x = self.dropout(x) #see section 5.4 of paper, apply dropout to sum of embedding and pos enc
         return x
 
 
@@ -105,7 +105,7 @@ class LayerNormalization(nn.Module):
 
 class FeedForwardBlock(nn.Module):
 
-    def __init__(self, d_model:int, dropout_rate: float, d_ff:int = 2048):
+    def __init__(self, d_model:int, d_ff:int = 2048):
         """
         Feed-forward block made of 2 linear layers
 
@@ -115,13 +115,11 @@ class FeedForwardBlock(nn.Module):
         """
         super().__init__()
         self.linear_1 = nn.Linear(in_features=d_model, out_features=d_ff)
-        self.dropout = nn.Dropout(dropout_rate)
         self.linear_2 = nn.Linear(in_features=d_ff, out_features=d_model)
 
     def forward(self, x):
         # (batch, seq_len, d_model) --> (batch, seq_len, d_ff) --> (batch, seq_len, d_model)
         x = torch.relu(self.linear_1(x))
-        x = self.dropout(x)
         x = self.linear_2(x)
         return x
 
@@ -145,9 +143,8 @@ class OutputLayer(nn.Module): #returns a probability of each word in the vocabul
 
 class SingleAttention(nn.Module):
 
-    def __init__(self, dropout_layer:nn.Dropout = None):
+    def __init__(self):
         super().__init__()
-        self.dropout = dropout_layer
     
     def forward(self, query, key, value, mask=None):
         # query, key, and value should all have shape (batch, seq_len, d_k)
@@ -159,7 +156,6 @@ class SingleAttention(nn.Module):
             query_key.masked_fill_(mask == 0, value = -1e9)
             #if the mask value is 0, fill with "negative infinity", so that the softmax is zero
         
-        query_key = self.dropout(query_key)
         query_key = nn.Softmax(dim=-1)(query_key) #so that the ROWS add up to 1
         #the video seem to be missing this softmax?
         attention_output = torch.matmul(query_key, value)
@@ -170,7 +166,7 @@ class SingleAttention(nn.Module):
 
 class MultiHeadAttention(nn.Module):
 
-    def __init__(self, d_model: int, n_heads: int, dropout_rate: float):
+    def __init__(self, d_model: int, n_heads: int):
         super().__init__()
         self.d_model = d_model
         self.h = n_heads
@@ -184,14 +180,8 @@ class MultiHeadAttention(nn.Module):
         self.wq = nn.Linear(in_features=d_model, out_features=d_model)
         self.wk = nn.Linear(d_model,d_model)
         self.wv = nn.Linear(d_model,d_model)
-
         self.wo = nn.Linear(d_model,d_model)
-
         self.attention = SingleAttention()
-
-        if dropout_rate is not None:
-            self.dropout = nn.Dropout(p= dropout_rate)
-            self.attention = SingleAttention(dropout_layer=self.dropout)
 
 
     def forward(self,q,k,v,mask=None):
@@ -243,11 +233,11 @@ class EncoderBlock(nn.Module):
         # x should be input embedding + positional encoding
         #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
         attention_output = self.self_attention_block(x,x,x,src_mask)
-        attention_output = self.dropout(attention_output)
+        attention_output = self.dropout(attention_output) #see paper section 5.4, dropout after every sub-layer
         x = self.norm(x+attention_output) #with residual connection
-        feed_forward_ouput = self.feed_forward_block(x)
-        feed_forward_ouput = self.dropout(feed_forward_ouput)
-        x = self.norm(x+feed_forward_ouput)
+        feed_forward_output = self.feed_forward_block(x)
+        feed_forward_output = self.dropout(feed_forward_output) #see paper section 5.4, dropout after every sub-layer
+        x = self.norm(x+feed_forward_output)
         
         return x
 
@@ -274,18 +264,18 @@ class DecoderBlock(nn.Module):
         #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
         ### self attention
         self_attention_output = self.self_attention_block(x,x,x,tgt_mask)
-        self_attention_output = self.dropout(self_attention_output)
+        self_attention_output = self.dropout(self_attention_output) #see paper section 5.4, dropout after every sub-layer
         x = self.norm(x+self_attention_output) #with residual connection
 
         ### cross attention
         # query is output of previous decoder layer, key & value is final output of encoder
         cross_attention_output = self.cross_attention_block(x,encoder_output, encoder_output, src_mask)
-        cross_attention_output = self.dropout(cross_attention_output)
+        cross_attention_output = self.dropout(cross_attention_output) #see paper section 5.4, dropout after every sub-layer
         x = self.norm(x+cross_attention_output)
 
-        feed_forward_ouput = self.feed_forward_block(x)
-        feed_forward_ouput = self.dropout(feed_forward_ouput)
-        x = self.norm(x+feed_forward_ouput)
+        feed_forward_output = self.feed_forward_block(x)
+        feed_forward_output = self.dropout(feed_forward_output) #see paper section 5.4, dropout after every sub-layer
+        x = self.norm(x+feed_forward_output)
         
         return x
 
