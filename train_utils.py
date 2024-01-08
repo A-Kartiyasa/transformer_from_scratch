@@ -195,7 +195,7 @@ def train_model(config):
             batch_iterator.set_postfix({f'loss':f'{loss.item():6.3f}'}) #display loss after progress bar
 
             # Log the loss
-            writer.add_scalar('train loss', loss.item(), global_step)
+            writer.add_scalar('train loss', loss.item(), global_step) #why global step not epoch?
             writer.flush()
 
             # Backpropagate the loss
@@ -316,6 +316,7 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
             
             # Print the source, target and model output 
             # (print_msg is used instead of print because we use tqdm to display progress bar)
+            # print_msg is tqdm.tqdm.write method (see call to run_validation on train_model)
             print_msg('-'*console_width)
             print_msg(f"{f'SOURCE: ':>12}{source_text}")
             print_msg(f"{f'TARGET: ':>12}{target_text}")
