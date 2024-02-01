@@ -156,11 +156,19 @@ def train_model(config):
     # preloading settings
     initial_epoch = 0 #0 if we start from beginning
     global_step = 0
-
-    if config['preload']: #so we can resume training - need model state and optimizer state
+    
+    #so we can resume training - need model state and optimizer state
+    if config['preload'] == 'latest':
+        model_filename = config_utils.latest_weights_file_path(config)
+    elif config['preload']:
         model_filename = config_utils.get_weights_file_path(config, epoch= config['preload'])
+    else:
+        model_filename = None
+
+    if model_filename:
         print(f'preloading model {model_filename}')
         model_state = torch.load(model_filename)
+        model.load_state_dict(model_state['model_state_dict']) #this was missing in the video
         initial_epoch = model_state['epoch'] + 1
         optimizer.load_state_dict(model_state['optimizer_state_dict'])
         global_step = model_state['global_step']
@@ -226,7 +234,11 @@ def train_model(config):
                 'global_step': global_step}, 
                 model_filename)
     
-    
+        torch.cuda.empty_cache() #apparently to avoid cuda running out of memory
+        # to avoid illegal Runtime error: illegal instruction encountered
+        # https://stackoverflow.com/questions/68106457/pytorch-cuda-error-an-illegal-memory-access-was-encountered
+        
+        
     #save model at the end of training   
     model_filename = config_utils.get_weights_file_path(config, f"{epoch:02d}")
     torch.save({
@@ -235,6 +247,8 @@ def train_model(config):
             'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step}, 
             model_filename)
+
+
 
 ##### VALIDATION FUNCTIONS #####
 
