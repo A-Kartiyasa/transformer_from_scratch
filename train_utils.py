@@ -77,11 +77,17 @@ def get_or_build_tokenizer(config,ds,lang):
 ##### LOAD AND TOKENIZE THE DATASET #####
 
 def get_ds(config):
+    
     # It only has the train split, so we divide it overselves
     #ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train+validation+test')
     #train_ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
     #val_ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='validation')
-    ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
+    ds_raw = datasets.load_dataset(f"{config['datasource']}", 
+                                   f"{config['lang_src']}-{config['lang_tgt']}", 
+                                   split='train',
+                                   trust_remote_code=True)
+    
+    
     
     # Build tokenizers
     tokenizer_src = get_or_build_tokenizer(config, ds_raw, config['lang_src']) #build tokenizer for source language dataset
@@ -139,7 +145,7 @@ def train_model(config):
     print(f'training device is {device}')
 
     #ensure we have the folder to save the weights
-    Path(f"{config['datasource']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
+    Path(f"{config['datasource']}_{config['lang_src']}_{config['lang_tgt']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
 
     # DataLoader and model
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
@@ -177,12 +183,12 @@ def train_model(config):
     ### TRAINING LOOP ###
         
     for epoch in range(initial_epoch, config['n_epochs']):
-        
+        torch.cuda.empty_cache()
         batch_iterator = tqdm(train_dataloader, desc=f'processing epoch {epoch:02d}') #iterator but also prints progress bar
-
+        model.train() #put model in training mode
+        
         for batch in batch_iterator:
-            model.train() #put model in training mode
-
+            
             encoder_input = batch['encoder_input'].to(device) # (B, seq_len)
             decoder_input = batch['decoder_input'].to(device) # (B, seq_len)
             encoder_mask = batch['encoder_mask'].to(device) # (B, 1, 1, seq_len)
