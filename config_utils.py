@@ -10,7 +10,7 @@ def get_config():
         "n_blocks": 6, #6 in the paper
         "n_heads": 8, #8 in the paper
         "d_ff": 1024, #2048 in the paper
-        "dropout_rate": 0.05,
+        "dropout_rate": 0.1,
         #"datasource": 'indonlp/NusaX-MT', #dataset is too small 
         #"datasource": 'opus_books',
         "datasource": 'opus_euconst',

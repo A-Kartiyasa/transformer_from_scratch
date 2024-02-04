@@ -6,6 +6,7 @@ stty is not recognized error?
 import os
 from pathlib import Path
 from tqdm import tqdm #for progress bar
+import warnings
 
 # torch related
 import torch
@@ -13,6 +14,8 @@ from torch.utils.data import random_split, DataLoader
 from torch.utils.tensorboard import SummaryWriter #for visualization
 import torchmetrics
 
+#bleu score
+from nltk.translate.bleu_score import sentence_bleu
 
 #Huggingface libraries
 import datasets 
@@ -361,8 +364,15 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
         writer.flush()
 
         # Compute the BLEU metric
-        metric = torchmetrics.text.BLEUScore()
-        bleu = metric(predicted, expected)
+        # metric = torchmetrics.text.BLEUScore() # DOES NOT WORK FOR SENTENCE COMPARISON
+        # bleu = metric(predicted, expected) #apparently we need the target to be an iterable?   
+        bleu = 0
+        for i in range(len(expected)):
+            bleu_i = sentence_bleu([expected[i]], predicted[i]) #using nltk, not torchmetrics
+            # the reference (ie the target) needs to be a list
+            bleu += bleu_i
+        
+        #print(bleu)
         writer.add_scalar('validation BLEU', bleu, global_step)
         writer.flush()
 
@@ -377,6 +387,7 @@ if __name__ == '__main__':
     # config = config_utils.get_config()
     # ds_raw = datasets.load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
     # get_all_sentences(ds_raw,1)
+    warnings.filterwarnings("ignore") #ignore warnings
     config = config_utils.get_config()
     #print(config)
     print('starting training script')
