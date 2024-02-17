@@ -10,7 +10,7 @@ implements NN from Attention is All You Need paper
 
 """
 
-##### INPUTS TO THE MULTI-HEAD ATTENTION #####
+##################### INPUTS TO THE MULTI-HEAD ATTENTION #####################
 
 class InputEmbeddings(nn.Module):
         
@@ -19,17 +19,28 @@ class InputEmbeddings(nn.Module):
         """
         Converts the input sentence into embeddings.
 
-        Args:
-        d_model : dimension of the embedding (for each word)
-        vocab_size : size of the vocabulary corpus
+        Init Args:
+            d_model     : dimension of the embedding (for each word)
+            vocab_size  : size of the vocabulary corpus
+            
         """
+        
         super().__init__()
+        
         self.d_model = d_model
         self.vocab_size = vocab_size
         self.embedding = nn.Embedding(vocab_size, d_model)
         #nn.Embedding is a lookup table that stores embeddings of a fixed dictionary and size 
     
     def forward(self, x):
+        
+        """ 
+        Args:
+            x : input sentence(s) of shape (batch, seq_len)
+        
+        Returns:
+            x   : Embedded sentence(s) of shape (batch, seq_len, d_model)     
+        """
         #(batch, seq_len) --> (batch, seq_len, d_model)
         x = self.embedding(x)*np.sqrt(self.d_model) #see section 3.4 in the paper
         return x
@@ -40,13 +51,16 @@ class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, seq_len: int, dropout_rate = None):
 
         """
-        Creates the positional encodings for the 'words' in the input sentence.
+        Creates sine and cosine positional encodings for the 'words' in the input sentence,
         -- technically it's the embeddings, not the words
+        and adds the positional encoding into the input sentence.
+        See section 3.5 of the paper.
 
-        Args:
-        d_model : dimension of the embedding (for each word)
-        seq_len : length of the input sentence
-        dropout_rate : proportion of units that are dropped
+        Init Args:
+            d_model         : dimension of the embedding (for each word)
+            seq_len         : length of the input sentence
+            dropout_rate    : proportion of units that are dropped
+            
         """
 
         super().__init__()
@@ -65,6 +79,7 @@ class PositionalEncoding(nn.Module):
         #i.e we have i * log(10000)/d_model
         #giving a tensor of length d_model/2
         div_term = torch.exp(torch.arange(0,d_model,2).float()*(-np.log(10000.0)/d_model))
+        
         #create the encodings
         pos_enc[:,0::2] = torch.sin(position*div_term) #for the even positions (0,2,4,6,...)
         pos_enc[:,1::2] = torch.cos(position*div_term) #for the even positions (0,1,3,5,...)
@@ -75,25 +90,57 @@ class PositionalEncoding(nn.Module):
 
 
     def forward(self,x):
+        
+        """
+        Args:
+            x   : input sentence(s) of shape (batch, seq_len, d_model).
+            
+        Returns:
+            x   : input sentence(s) with positional encoding added, shape (batch, seq_len, d_model).
+        """
         # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
-        x = x + (self.pos_enc[:,:x.shape[1],:]).requires_grad_(False) #ensure not updated during training
+        x = x + (self.pos_enc[:,:x.shape[1],:]).requires_grad_(False) 
+        #x.shape[1] is seq_len
+        #requires_grad_(False) ensure not updated during training
         x = self.dropout(x) #see section 5.4 of paper, apply dropout to sum of embedding and pos enc
         return x
 
 
 
-##### ADDITIONAL LAYERS #####
+##################### ADDITIONAL LAYERS #####################
     
 class LayerNormalization(nn.Module):
+    
     #compare to original torch implementation (https://pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html)
     #what should be the dimension of gamma and bias?
+    
     def __init__(self, features:int, epsilon: float = 1e-5):
+        
+        """
+        Normalizes the input across all units in the layer, for a single example.
+    
+        Init Args:
+            features    : number of units in the layer. Usually should be d_model.
+            epsilon     : a small number added to the divisor (i.e. standard deviation) to avoid division by 0.
+        
+        """
+         
         super().__init__()
         self.epsilon = epsilon #to avoid divide by 0
         self.gamma = nn.Parameter(torch.ones(features)) #learnable weight, per feature (which is usually d_model)
         self.beta = nn.Parameter(torch.zeros(features)) #learnable bias
     
+    
     def forward(self,x):
+        
+        """ 
+        Args:
+            x : input of shape (batch, seq_len, d_model).
+            
+         Returns:
+            layer_output : normalized output of shape (batch, seq_len, features). 
+        
+        """
         # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
         mean = torch.mean(x, dim = -1, keepdim = True) #keepdim for broadcasting
         st_dev = torch.std(x, dim = -1, keepdim = True)
@@ -106,18 +153,30 @@ class LayerNormalization(nn.Module):
 class FeedForwardBlock(nn.Module):
 
     def __init__(self, d_model:int, d_ff:int = 2048):
+        
         """
-        Feed-forward block made of 2 linear layers
+        Feed-forward block made of 2 linear layers.
+        See section 3.3 in the paper.
 
-        Args:
-        d_model : dimension of the embedding
-        d_ff : inner layer dimensionality (i.e. number of units in first layer)
+        Init Args:
+            d_model : dimension of the embedding
+            d_ff    : inner layer dimensionality (i.e. number of units in first layer)
+        
         """
         super().__init__()
         self.linear_1 = nn.Linear(in_features=d_model, out_features=d_ff)
         self.linear_2 = nn.Linear(in_features=d_ff, out_features=d_model)
 
     def forward(self, x):
+        
+        """ 
+        Args:
+            x: input of shape (batch, seq_len, d_model).
+        
+        Returns:
+            x: output of shape (batch, seq_len, d_model)
+            
+        """
         # (batch, seq_len, d_model) --> (batch, seq_len, d_ff) --> (batch, seq_len, d_model)
         x = torch.relu(self.linear_1(x))
         x = self.linear_2(x)
@@ -126,27 +185,66 @@ class FeedForwardBlock(nn.Module):
 #class residual_connection(nn.Module):
 # decided not to make a separate class for this, add directly in encoder
 
-class OutputLayer(nn.Module): #returns a probability of each word in the vocabulary
+class OutputLayer(nn.Module): 
 
     def __init__(self,d_model:int, vocab_size:int):
+        
+        """ 
+        Fully-connected layer to project the decoder output into vocab size.
+        Takes d_model inputs, and has vocab_size units.
+    
+        Init Args:
+            d_model     : size of the embeddings used in the model
+            vocab_size  : size of the vocabulary used to train the model
+        """
+        
         super().__init__()
         self.linear = nn.Linear(d_model, vocab_size)
     
     def forward(self,x):
+        
+        """ 
+        Args:
+            x: input of shape (batch, seq_len, d_model).
+        
+        Returns:
+            x: output of shape (batch, seq_len, vocab_size).
+        """
         #(batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         x = self.linear(x)
-        x = torch.log_softmax(x, dim=-1)
+        #x = torch.log_softmax(x, dim=-1) #we will be using cross entropy loss later
         return x
 
 
-##### ATTENTION LAYERS #####
+#####################  ATTENTION LAYERS ##################### 
 
 class SingleAttention(nn.Module):
 
     def __init__(self):
+        
+        """ 
+        Implements scaled dot-product attention.
+        See section 3.2.1 in the paper.
+        
+        """
         super().__init__()
     
     def forward(self, query, key, value, mask=None):
+        
+        """ 
+        Args: 
+            query   : input "sentence" of shape (batch, ..., seq_len, d_k)
+            key     : input "sentence" of shape (batch, ..., seq_len, d_k)
+            value   : input "sentence" of shape (batch, ..., seq_len, d_k)
+            mask    : mask, used for example in the decoder block to prevent the model from 'seeing' subsequent words
+                        in the input sentence when predicting the next word.
+        
+        Returns:
+            attention_output    : matmul(query_key,V), of shape (batch, ..., seq_len, d_k)
+            query_key           : the "attention score", softmax(QK/sqrt(d_k)), of shape (batch,..., 1)
+            
+        """
+        
         # query, key, and value should all have shape (batch, seq_len, d_k)
         d_k = query.shape[-1]
         query_key = torch.matmul(query, key.transpose(-2,-1)) / np.sqrt(d_k)
@@ -159,12 +257,31 @@ class SingleAttention(nn.Module):
         query_key = nn.Softmax(dim=-1)(query_key) #so that the ROWS add up to 1
         #the video seem to be missing this softmax?
         attention_output = torch.matmul(query_key, value)
-        # (batch,..., seq_len, seq_len) --> (batch, ..., seq_len, d_model)
+        # (batch,..., seq_len, seq_len) --> (batch, ..., seq_len, d_k)
 
         return attention_output, query_key
 
 
 class MultiHeadAttention(nn.Module):
+    
+    """ 
+    Implements multi-head attention with learnable weights.
+    See section 3.2.2 in the paper.
+    
+    The learnable weights (wq, wk, wv, wo) are implemented as linear layer with input units = output units = d_model.
+    wq - query weight, wk - key weight, wv - value weight, wo - overall weight.
+    
+    The query, key, and value tensors, which has shape (batch, seq_len, d_model), 
+    are first multiplied by the corresponding weights
+    and then split and rearranged into shape (batch, n_heads, seq_len, d_k), where d_k = d_model / n_heads.
+    
+    Scaled dot-product attention is then calculated for each head using the SingleAttention module.
+    
+    Init Args:
+        d_model: size of the embedding used in the model
+        n_heads : number of attention heads
+        
+    """
 
     def __init__(self, d_model: int, n_heads: int):
         super().__init__()
@@ -185,6 +302,17 @@ class MultiHeadAttention(nn.Module):
 
 
     def forward(self,q,k,v,mask=None):
+        
+        """ 
+        Args:
+            q: query "sentence" of shape (batch, seq_len, d_model).
+            k: key "sentence" of shape (batch, seq_len, d_model).
+            v: value "sentence" of shape (batch, seq_len, d_model).
+        
+        Returns:
+            x: output of shape (batch, seq_len, d_model).
+        """
+        
         query = self.wq(q) # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
         key = self.wk(k) # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
         value = self.wv(v) # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
@@ -210,7 +338,7 @@ class MultiHeadAttention(nn.Module):
         return x
 
 
-##### ENCODER AND DECODER BLOCKS #####
+##################### ENCODER AND DECODER BLOCKS #####################
 
 class EncoderBlock(nn.Module):
 
