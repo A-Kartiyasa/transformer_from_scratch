@@ -1,6 +1,6 @@
 """
 stty is not recognized error?
-
+-- windows issue
 """
 
 import os
@@ -160,7 +160,7 @@ def train_model(config):
     # optimizer, loss function
     optimizer = torch.optim.Adam(model.parameters(), lr= config['lr'], eps=1e-9)
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device) 
-    #use label smoothing to reduce overfitting
+    #use label smoothing to reduce overfitting (see paper)
 
     # preloading settings
     initial_epoch = 0 #0 if we start from beginning
@@ -285,7 +285,8 @@ def greedy_decode(model, source, source_mask,tokenizer_tgt, max_len, device): #t
         out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
 
         # get next token and add it to the decoder input (ie for the next run the decoder input has an additional word)
-        prob = model.project(out[:, -1]) #why the index?
+        prob = model.project(out[:, -1]) #why the index? pick the last word only?
+        prob = torch.softmax(prob, dim=-1) #get the probabilities for the words
         _, next_word = torch.max(prob, dim=1) #take the maximum probability, ie "greedy"
 
         decoder_input = torch.cat(
@@ -364,14 +365,14 @@ def run_validation(model, validation_ds, tokenizer_tgt, max_len, device, print_m
         writer.flush()
 
         # Compute the BLEU metric
-        # metric = torchmetrics.text.BLEUScore() # DOES NOT WORK FOR SENTENCE COMPARISON
-        # bleu = metric(predicted, expected) #apparently we need the target to be an iterable?   
+ 
         bleu = 0
         for i in range(len(expected)):
             bleu_i = sentence_bleu([expected[i]], predicted[i]) #using nltk, not torchmetrics
             # the reference (ie the target) needs to be a list
             bleu += bleu_i
         
+        bleu = bleu/len(expected) #average the bleu scores in the batch
         #print(bleu)
         writer.add_scalar('validation BLEU', bleu, global_step)
         writer.flush()
