@@ -340,13 +340,32 @@ class MultiHeadAttention(nn.Module):
 
 ##################### ENCODER AND DECODER BLOCKS #####################
 
+
 class EncoderBlock(nn.Module):
+    
+    """ 
+    Assembles a single encoder block. 
+    See section 3.1 of the paper.
+    
+    The encoder block consists of 2 sub-layers:
+        1. Attention layer. 
+        Computes the self-attention output, adds the residual connection, then applies layer norm.
+        2. Feed-forward layer. 
+        Computes the feed-forward output, adds the residual connection, then applies layer norm.
+    
+    Init Args:
+        features            : usually should be dimensions of the embedding (d_model).
+        self_attention_block: an instance of the MultiHeadAttention class.
+        feed_forward_block  : an instance of the FeedForwardBlock class.
+        dropout_rate        : dropout probability.
+        
+    """
 
     def __init__(self, features:int,
                  self_attention_block: MultiHeadAttention, 
                  feed_forward_block: FeedForwardBlock,
                  dropout_rate: float):
-        #self-attention & feedforward as argumentshere in case want to add other custom layers
+        #self-attention & feedforward as arguments here in case want to add other custom layers
 
         super().__init__()
         self.self_attention_block = self_attention_block
@@ -358,6 +377,14 @@ class EncoderBlock(nn.Module):
             self.dropout = None
     
     def forward(self, x, src_mask):
+        
+        """ 
+        Args:
+            x: position-encoded input "sentence", of shape (batch, seq_len, d_model).
+        
+        Returns:
+            x: output of shape (batch, seq_len, d_model)
+        """
         # x should be input embedding + positional encoding
         #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
         attention_output = self.self_attention_block(x,x,x,src_mask)
@@ -408,7 +435,7 @@ class DecoderBlock(nn.Module):
         return x
 
 
-##### PLACEHOLDER CLASSES TO CHAIN MULTIPLE ENCODER (DECODER) BLOCKS ######
+##################### PLACEHOLDER CLASSES TO CHAIN MULTIPLE ENCODER (DECODER) BLOCKS #####################
 
 class Encoder(nn.Module): 
 
