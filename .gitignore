@@ -3,3 +3,5 @@
 /opus_euconst_en_fr_weights
 /runs
 /opus_euconst
+/training.py
+/transformer.ipynb
