@@ -536,10 +536,22 @@ class Transformer(nn.Module):
         return self.output_layer(x)
     
 
+
 def build_transformer(src_vocab_size: int, tgt_vocab_size: int, 
                       src_seq_len: int, tgt_seq_len: int, d_model: int = 512,
                       n_blocks: int=6, n_heads: int=8,  
                       d_ff: int=2048, dropout_rate: float= None):
+    
+    """
+    Assembles the Transformer network.
+    See Figure 1 in the paper.
+
+    Args:
+
+    Returns:
+    
+    
+    """
     
     ### Create the embedding layers
     src_embed = InputEmbeddings(d_model, src_vocab_size)
