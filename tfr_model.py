@@ -263,27 +263,28 @@ class SingleAttention(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    
-    """ 
-    Implements multi-head attention with learnable weights.
-    See section 3.2.2 in the paper.
-    
-    The learnable weights (wq, wk, wv, wo) are implemented as linear layer with input units = output units = d_model.
-    wq - query weight, wk - key weight, wv - value weight, wo - overall weight.
-    
-    The query, key, and value tensors, which has shape (batch, seq_len, d_model), 
-    are first multiplied by the corresponding weights
-    and then split and rearranged into shape (batch, n_heads, seq_len, d_k), where d_k = d_model / n_heads.
-    
-    Scaled dot-product attention is then calculated for each head using the SingleAttention module.
-    
-    Init Args:
-        d_model: size of the embedding used in the model
-        n_heads : number of attention heads
-        
-    """
 
     def __init__(self, d_model: int, n_heads: int):
+
+        """ 
+        Implements multi-head attention with learnable weights.
+        See section 3.2.2 in the paper.
+        
+        The learnable weights (wq, wk, wv, wo) are implemented as linear layer with input units = output units = d_model.
+        wq - query weight, wk - key weight, wv - value weight, wo - overall weight.
+        
+        The query, key, and value tensors, which has shape (batch, seq_len, d_model), 
+        are first multiplied by the corresponding weights
+        and then split and rearranged into shape (batch, n_heads, seq_len, d_k), where d_k = d_model / n_heads.
+        
+        Scaled dot-product attention is then calculated for each head using the SingleAttention module.
+        
+        Init Args:
+            d_model: size of the embedding used in the model
+            n_heads : number of attention heads
+        
+        """
+
         super().__init__()
         self.d_model = d_model
         self.h = n_heads
@@ -343,29 +344,33 @@ class MultiHeadAttention(nn.Module):
 
 class EncoderBlock(nn.Module):
     
-    """ 
-    Assembles a single encoder block. 
-    See section 3.1 of the paper.
     
-    The encoder block consists of 2 sub-layers:
-        1. Attention layer. 
-        Computes the self-attention output, adds the residual connection, then applies layer norm.
-        2. Feed-forward layer. 
-        Computes the feed-forward output, adds the residual connection, then applies layer norm.
-    
-    Init Args:
-        features            : usually should be dimensions of the embedding (d_model).
-        self_attention_block: an instance of the MultiHeadAttention class.
-        feed_forward_block  : an instance of the FeedForwardBlock class.
-        dropout_rate        : dropout probability.
-        
-    """
 
     def __init__(self, features:int,
                  self_attention_block: MultiHeadAttention, 
                  feed_forward_block: FeedForwardBlock,
                  dropout_rate: float):
         #self-attention & feedforward as arguments here in case want to add other custom layers
+
+        """ 
+        Assembles a single encoder block. 
+        See section 3.1 of the paper.
+        
+        The encoder block consists of 2 sub-layers:
+            1. Self-attention layer. 
+            Computes the self-attention output, adds the residual connection, then applies layer norm.
+            The query, key, and value for the Attention computation is the same input "sentence".
+
+            2. Feed-forward layer
+            Computes the feed-forward output, adds the residual connection, then applies layer norm.
+        
+        Init Args:
+            features            : usually should be dimensions of the embedding (d_model).
+            self_attention_block: an instance of the MultiHeadAttention class.
+            feed_forward_block  : an instance of the FeedForwardBlock class.
+            dropout_rate        : dropout probability.
+            
+        """
 
         super().__init__()
         self.self_attention_block = self_attention_block
@@ -380,7 +385,8 @@ class EncoderBlock(nn.Module):
         
         """ 
         Args:
-            x: position-encoded input "sentence", of shape (batch, seq_len, d_model).
+            x           : position-encoded input "sentence", of shape (batch, seq_len, d_model).
+            src_mask    : mask to be applied to the Encoder input
         
         Returns:
             x: output of shape (batch, seq_len, d_model)
@@ -404,6 +410,25 @@ class DecoderBlock(nn.Module):
                  cross_attention_block: MultiHeadAttention,
                  feed_forward_block: FeedForwardBlock,
                  dropout_rate: float):
+        
+        """
+        Assembles a single Decoder block. 
+        See section 3.1 of the paper.
+
+        The Decoder block consists of 3 sub-layers:
+            1. Self-attention layer
+            Computes the self-attention output, adds the residual connection, then applies layer norm.
+            The query, key, and value for the Attention computation is the same input "sentence".
+
+            2. Cross-attention layer
+            Computes the cross-attention output, adds the residual connection, then applies layer norm.
+            The query is the output of the previous layer (self-attention), while the key & value is the output of the entire Encoder side (not the output of one Encoder block).
+
+            3. Feed-forward layer
+            Computes the feed-forward output, adds the residual connection, then applies layer norm.
+
+        
+        """
 
         super().__init__()
         self.self_attention_block = self_attention_block
@@ -416,6 +441,16 @@ class DecoderBlock(nn.Module):
             self.dropout = None
 
     def forward(self, x, encoder_output, src_mask, tgt_mask):
+
+        """
+        Args:
+            x               : position-encoded input "sentence", of shape (batch, seq_len, d_model).
+            encoder_output  : output of the entire Encoder
+            src_mask        : mask to be applied to the Encoder input
+            tgt_mask        : mask to be applied to the Decoder input
+
+        """
+
         #(batch, seq_len, d_model) --> (batch, seq_len, d_model)
         ### self attention
         self_attention_output = self.self_attention_block(x,x,x,tgt_mask)
