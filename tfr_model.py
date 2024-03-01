@@ -527,6 +527,19 @@ class Transformer(nn.Module):
                  src_pos = PositionalEncoding, tgt_pos = PositionalEncoding,
                  output_layer = OutputLayer):
         
+        """
+        Placeholder class to chain together the embedding, positional encoding, Encoder, Decoder, and projection layer.
+
+        Init Args:
+            encoder     : an instance of Encoder class
+            decoder     : an instance of Decoder class
+            src_embed   : an instance of InputEmbeddings class (i.e. embedding applied to input for the Encoder side)
+            tgt_embed   : an instance of InputEmbeddings class (i.e. embedding applied to input for the Decoder side)
+            src_pos     : an instance of PositionalEncoding class, applied to input of Encoder
+            tgt_pos     : an instance of PositionalEncoding class, applied to input of Decoder
+            output_layer: an instance of OutputLayer class
+        """
+        
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -537,6 +550,10 @@ class Transformer(nn.Module):
         self.output_layer = output_layer
     
     def encode(self, src, src_mask):
+
+        """
+        
+        """
         # (batch, seq_len, d_model)
         src = self.src_embed(src) #input embedding
         src = self.src_pos(src) #positional encoding
@@ -555,6 +572,7 @@ class Transformer(nn.Module):
     
 
 
+
 def build_transformer(src_vocab_size: int, tgt_vocab_size: int, 
                       src_seq_len: int, tgt_seq_len: int, d_model: int = 512,
                       n_blocks: int=6, n_heads: int=8,  
@@ -563,6 +581,9 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
     """
     Assembles the Transformer network.
     See Figure 1 in the paper.
+    First applies learnable embeddings to the input sentence and adds positional encoding (for both Encoder and Decoder).
+    Then feeds the respective input sentences into the Encoder and Decoder.
+    Then feeds the Decoder output to a projection layer.
 
     Args:
         src_vocab_size  : vocabulary size for the Encoder input
@@ -571,8 +592,9 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
         tgt_seq_len     : sentence length of Decoder input (i.e. define a max length, then pad sentences of less than this length) 
         n_blocks        : number of 
 
+        
     Returns:
-    
+        transformer     : a Transformer object.
     
     """
     
