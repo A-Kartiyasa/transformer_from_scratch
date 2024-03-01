@@ -475,7 +475,16 @@ class DecoderBlock(nn.Module):
 class Encoder(nn.Module): 
 
     def __init__(self, features:int, layers: nn.ModuleList): 
-        #layers should be a list of encoder blocks, see build_transformer below
+
+        """
+        Placeholder class to chain EncoderBlock objects together to create the Encoder.
+
+        Init Args:
+            features    : number of features. Usually should be equal to embedding size d_model.
+            layers      : ModuleList of EncoderBlock objects.
+        
+        """
+        
         super().__init__()
         self.layers = layers
         self.norm = LayerNormalization(features)
@@ -489,7 +498,16 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
 
     def __init__(self, features:int, layers: nn.ModuleList):
-        #layers should be a list of decoder blocks, see build_transformer below
+
+        """
+        Placeholder class to chain DecoderBlock objects together to create the Decoder.
+
+        Init Args:
+            features    : number of features. Usually should be equal to embedding size d_model.
+            layers      : ModuleList of DecoderBlock objects.
+        
+        """
+
         super().__init__()
         self.layers = layers
         self.norm = LayerNormalization(features)
@@ -547,6 +565,11 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
     See Figure 1 in the paper.
 
     Args:
+        src_vocab_size  : vocabulary size for the Encoder input
+        tgt_vocab_size  : vocabulary size for the Decoder input
+        src_seq_len     : sentence length of Encoder input (i.e. define a max length, then pad sentences of less than this length) 
+        tgt_seq_len     : sentence length of Decoder input (i.e. define a max length, then pad sentences of less than this length) 
+        n_blocks        : number of 
 
     Returns:
     
@@ -597,3 +620,5 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
             nn.init.xavier_uniform_(p)
     
     return transformer
+
+
