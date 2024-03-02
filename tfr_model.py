@@ -212,7 +212,7 @@ class OutputLayer(nn.Module):
         """
         #(batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         x = self.linear(x)
-        #x = torch.log_softmax(x, dim=-1) #we will be using cross entropy loss later
+        #x = torch.log_softmax(x, dim=-1) #skip this, we will be using cross entropy loss later
         return x
 
 
@@ -529,6 +529,7 @@ class Transformer(nn.Module):
         
         """
         Placeholder class to chain together the embedding, positional encoding, Encoder, Decoder, and projection layer.
+        Contains methods to actually put the input sentence through the network.
 
         Init Args:
             encoder     : an instance of Encoder class
@@ -549,26 +550,68 @@ class Transformer(nn.Module):
         self.tgt_pos = tgt_pos
         self.output_layer = output_layer
     
+
     def encode(self, src, src_mask):
 
         """
-        
+        Puts the input sentence through the Encoder side of the network.
+
+        Args:
+            src         : input sentence.
+            src_mask    : mask to be applied to encoder input.
+
+        Returns:
+            enc_output  : Encoder output.
+
         """
+
         # (batch, seq_len, d_model)
         src = self.src_embed(src) #input embedding
         src = self.src_pos(src) #positional encoding
-        return self.encoder(src, src_mask) #encoder block
+        enc_output = self.encoder(src, src_mask) #encoder output
+        return  enc_output
     
+
     def decode(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, 
                tgt: torch.Tensor, tgt_mask: torch.Tensor):
+        
+        """
+        Puts the input sentence (and the Encoder output) through the Decoder side of the network.
+
+        Args:
+            encoder_output  : Encoder output.
+            src_mask        : mask to be applied to Encoder input sentence.
+            tgt             : input sentence to the Decoder.
+            tgt_mask        : mask to be applied to Decoder input sentence.
+
+        Returns:
+            dec_output  : Decoder output.
+
+        """
+
         # (batch, seq_len, d_model)
         tgt = self.tgt_embed(tgt) #output embedding
         tgt = self.tgt_pos(tgt) #positional encoding
-        return self.decoder(tgt, encoder_output, src_mask, tgt_mask) #decoder block
+        dec_output = self.decoder(tgt, encoder_output, src_mask, tgt_mask) #decoder output
+        return dec_output
     
+
     def project(self, x):
+
+        """
+        Puts the Decoder output through the linear Output layer.
+        (i.e projects Decoder input into logits).
+
+        Args:
+            x           : input (should usually be Decoder output).
+        
+        Returns:
+            proj_output : output logits.
+        """
+
         # (batch, seq_len, vocab_size)
-        return self.output_layer(x)
+        proj_output = self.output_layer(x)
+        return proj_output
     
 
 
@@ -579,11 +622,8 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int,
                       d_ff: int=2048, dropout_rate: float= None):
     
     """
-    Assembles the Transformer network.
+    Assembles the previously defined modules into the Transformer network.
     See Figure 1 in the paper.
-    First applies learnable embeddings to the input sentence and adds positional encoding (for both Encoder and Decoder).
-    Then feeds the respective input sentences into the Encoder and Decoder.
-    Then feeds the Decoder output to a projection layer.
 
     Args:
         src_vocab_size  : vocabulary size for the Encoder input
