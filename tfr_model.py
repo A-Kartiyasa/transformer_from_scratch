@@ -318,19 +318,23 @@ class MultiHeadAttention(nn.Module):
         key = self.wk(k) # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
         value = self.wv(v) # (batch, seq_len, d_model) --> (batch, seq_len, d_model)
 
+        # Reshape the query, key, and value for multihead attention
         # (batch, seq_len, d_model) --> (batch, seq_len, h, d_k) --> (batch, h, seq_len, d_k)
+        
         query = query.view(query.shape[0], query.shape[1], self.h, self.d_k).transpose(1, 2)
         key = key.view(key.shape[0], key.shape[1], self.h, self.d_k).transpose(1, 2)
         value = value.view(value.shape[0], value.shape[1], self.h, self.d_k).transpose(1, 2)
         # note: explanation of torch.Tensor.view:
         # https://pytorch.org/docs/stable/generated/torch.Tensor.view.html
+        # torch.view and torch.reshape does somewhat similar thing
 
         attention_output, self.query_key = self.attention(query, key, value, mask)
 
         # Concatenate the heads
         # (batch, h, seq_len, d_k) --> (batch, seq_len, h, d_k) --> (batch, seq_len, d_model)
         x = attention_output.transpose(1, 2)
-        x = x.contiguous().view(x.shape[0], -1, self.h * self.d_k) #separate this to avoid UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+        x = x.contiguous().view(x.shape[0], -1, self.h * self.d_k) 
+        #separate this to avoid UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
         #note: explanation of torch.Tensor.contiguous:
         #https://stackoverflow.com/questions/48915810/what-does-contiguous-do-in-pytorch 
         #apparently torch.Tensor.view needs a contiguous input.
